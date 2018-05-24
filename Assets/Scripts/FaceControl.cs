@@ -4,7 +4,8 @@ using UnityEngine;
 using Affdex;
 using UnityEditor;
 using System.IO;
-using System;
+
+
 
 public class FaceControl : ImageResultsListener
 {
@@ -19,14 +20,22 @@ public class FaceControl : ImageResultsListener
     // The emotion and expression values we get from Affectiva. (0-100)
     private float EyeClosure, Smirk, MouthOpen, Smile, BrowRaise, BrowFurrow,Disgust,
         Fear,Anger,Sadness,Surprise, Joy, Contempt;
+
+	// helpers to calculate moving estimate (moving average to make it les jittery)
+	private float EyeClosure_mv_est, Smirk_mv_est, MouthOpen_mv_est, Smile_mv_est, BrowRaise_mv_est, BrowFurrow_mv_est,Disgust_mv_est,
+	Fear_mv_est,Anger_mv_est,Sadness_mv_est,Surprise_mv_est, Joy_mv_est, Contempt_mv_est, or_X_est, or_Y_est, or_Z_est;
+
     SkinnedMeshRenderer skinnedMeshRenderer;
     Mesh skinnedMesh;
     // The values for the head orientation from affectiva.
     public static float OrientationX, OrientationY,OrientationZ;
 
+
+
     public override void onFaceFound(float timestamp, int faceId)
     {
-        Debug.Log("Found the face");
+        Debug.Log("Found the face.");
+		TehUtils.test_print ();
     }
 
     public override void onFaceLost(float timestamp, int faceId)
@@ -55,13 +64,66 @@ public class FaceControl : ImageResultsListener
 	    public void setBlendShape(float Anger, float Contempt, float Disgust, float Fear, float Joy, float Sadness, float Surprise)
 	    {
 		Debug.Log("Affectiva gave us: Anger: " + Anger + "  Contempt: " + Contempt + "  Disgust: " + Disgust + "  Fear: " + Fear + "  Joy: " + Joy + "  Sadness: " + Sadness + "  Surprise: " + Surprise );
-		skinnedMeshRenderer.SetBlendShapeWeight (skinnedMesh.GetBlendShapeIndex ("AB_Anger"), Math.Min(Anger * 50, 100) );
-		skinnedMeshRenderer.SetBlendShapeWeight (skinnedMesh.GetBlendShapeIndex ("AB_Contempt"), Contempt * 50);
-		skinnedMeshRenderer.SetBlendShapeWeight (skinnedMesh.GetBlendShapeIndex ("AB_Disgust"), Disgust * 50);
-		skinnedMeshRenderer.SetBlendShapeWeight (skinnedMesh.GetBlendShapeIndex ("AB_Fear"), Fear * 50);
-		skinnedMeshRenderer.SetBlendShapeWeight (skinnedMesh.GetBlendShapeIndex ("AB_Joy"), Joy * 50);
-		skinnedMeshRenderer.SetBlendShapeWeight (skinnedMesh.GetBlendShapeIndex ("AB_Sadness"), Sadness * 50);
-		skinnedMeshRenderer.SetBlendShapeWeight (skinnedMesh.GetBlendShapeIndex ("AB_Surprise"), Surprise * 50);
+		float rnd = Random.Range(1f,4f);
+		float mv_esti = 60;
+		Debug.Log ("Joy before mv estimate: " + Joy);	
+		Joy += Random.Range (-15f, 15f);
+		Debug.Log ("Joy after random: " + Joy);
+
+		Joy = TehUtils.MovingEstimate (Joy_mv_est, Joy, mv_esti);
+		Joy_mv_est = Joy;
+		Debug.Log ("Joy after mv estimate: " + Joy + " joy_mv_est now: " + Joy_mv_est);
+		Joy = TehUtils.toBlendShapeValue (Joy, 5);
+		skinnedMeshRenderer.SetBlendShapeWeight (skinnedMesh.GetBlendShapeIndex ("AB_Joy"), Joy);
+
+//		Debug.Log ("Joy after blendshaper estimate: " + Joy);
+//		Surprise += Random.Range (0f, 1f);
+		Surprise += Random.Range (-5f, 5f);
+		Surprise = TehUtils.MovingEstimate (Surprise_mv_est, Surprise, mv_esti);	
+		Surprise_mv_est = Surprise;
+		Surprise = TehUtils.toBlendShapeValue (Surprise, 5);
+
+		skinnedMeshRenderer.SetBlendShapeWeight (skinnedMesh.GetBlendShapeIndex ("AB_Surprise"), Surprise);
+
+		Anger += Random.Range (-5f, 5f);
+		Anger = TehUtils.MovingEstimate (Anger_mv_est, Anger, mv_esti);
+		Anger_mv_est = Anger;
+		Anger = TehUtils.toBlendShapeValue (Anger, 5);
+		skinnedMeshRenderer.SetBlendShapeWeight (skinnedMesh.GetBlendShapeIndex ("AB_Anger"), Anger);
+
+		Contempt = TehUtils.MovingEstimate (Contempt_mv_est, Contempt, mv_esti);
+		Contempt_mv_est = Contempt;
+		Contempt = TehUtils.toBlendShapeValue (Contempt, 0.5f);
+		skinnedMeshRenderer.SetBlendShapeWeight (skinnedMesh.GetBlendShapeIndex ("AB_Contempt"), Contempt);
+
+		Disgust = TehUtils.MovingEstimate (Disgust_mv_est, Disgust, mv_esti);
+		Disgust_mv_est = Disgust;
+		Disgust = TehUtils.toBlendShapeValue (Disgust, 5);
+		if (Disgust > 50)
+			Disgust = 50;
+		if (Joy > 50)
+			Disgust = 0;
+		skinnedMeshRenderer.SetBlendShapeWeight (skinnedMesh.GetBlendShapeIndex ("AB_Disgust"), Disgust);
+
+		Fear += Random.Range (-5f, 5f);
+		Fear = TehUtils.MovingEstimate (Fear_mv_est, Fear, mv_esti);
+		Fear_mv_est = Fear;
+		Fear = TehUtils.toBlendShapeValue (Fear, 5);
+		skinnedMeshRenderer.SetBlendShapeWeight (skinnedMesh.GetBlendShapeIndex ("AB_Fear"), Fear);
+
+		Sadness += Random.Range (-5f, 5f);
+		Sadness = TehUtils.MovingEstimate (Sadness_mv_est, Sadness, mv_esti);
+		Sadness_mv_est = Sadness;
+		Sadness = TehUtils.toBlendShapeValue (Sadness, 1);
+		skinnedMeshRenderer.SetBlendShapeWeight (skinnedMesh.GetBlendShapeIndex ("AB_Sadness"), Sadness);
+//
+//		skinnedMeshRenderer.SetBlendShapeWeight (skinnedMesh.GetBlendShapeIndex ("AB_Anger"), Math.Min(Anger * 50, 100) );
+//		skinnedMeshRenderer.SetBlendShapeWeight (skinnedMesh.GetBlendShapeIndex ("AB_Contempt"), Contempt * 50);
+//		skinnedMeshRenderer.SetBlendShapeWeight (skinnedMesh.GetBlendShapeIndex ("AB_Disgust"), Disgust * 50);
+//		skinnedMeshRenderer.SetBlendShapeWeight (skinnedMesh.GetBlendShapeIndex ("AB_Fear"), Fear * 50);
+//		skinnedMeshRenderer.SetBlendShapeWeight (skinnedMesh.GetBlendShapeIndex ("AB_Joy"), Joy * 50);
+//		skinnedMeshRenderer.SetBlendShapeWeight (skinnedMesh.GetBlendShapeIndex ("AB_Sadness"), Sadness * 50);
+//		skinnedMeshRenderer.SetBlendShapeWeight (skinnedMesh.GetBlendShapeIndex ("AB_Surprise"), Surprise * 50);
 	//	 skinnedMeshRenderer.SetBlendShapeWeight (skinnedMesh.GetBlendShapeIndex ("AB_W_Funnel"), Smile);
 	    }
 
@@ -99,9 +161,19 @@ public class FaceControl : ImageResultsListener
 //            face.Emotions.TryGetValue(Emotions.Surprise, out Surprise);
 //            face.Emotions.TryGetValue(Emotions.Joy, out Joy);
 //            // Getting the orientation for rotating the head.
-//            OrientationX = face.Measurements.Orientation.x;
-//            OrientationY = face.Measurements.Orientation.y;
-//            OrientationZ = face.Measurements.Orientation.z;
+              OrientationX = face.Measurements.Orientation.x;
+              OrientationY = face.Measurements.Orientation.y;
+              OrientationZ = face.Measurements.Orientation.z;
+
+
+			OrientationX = TehUtils.MovingEstimate (or_X_est, OrientationX, 6);
+			or_X_est = OrientationX;
+			OrientationY = TehUtils.MovingEstimate (or_Y_est, OrientationY, 6);
+			or_Y_est = OrientationY;
+			OrientationZ = TehUtils.MovingEstimate (or_Z_est, OrientationZ, 6);
+			or_Z_est = OrientationZ;
+
+		//	Debug.Log ("orientation now : " + OrientationX);
 
 	//s		Debug.Log("Affectiva gave us Smile " + Smile);
         }
